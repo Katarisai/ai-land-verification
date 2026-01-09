@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LoginPage } from './components/LoginPage';
 import { Dashboard } from './components/Dashboard';
 import { LandListings } from './components/LandListings';
 import { LandDetail } from './components/LandDetail';
-import { AIAssistant } from './components/AIAssistant';
+import { AIAssistant } from './components/AIAssistantClean';
 import { NavigationMenu } from './components/NavigationMenu';
 import { ViewDocuments } from './components/ViewDocuments';
 import { ProjectsPage } from './components/ProjectsPage';
@@ -13,7 +13,9 @@ import { SchedulePage } from './components/SchedulePage';
 import { DailyReportsPage } from './components/DailyReportsPage';
 import { SettingsPage } from './components/SettingsPage';
 import { Button } from './components/ui/button';
-import { MoreVertical } from 'lucide-react';
+import { Input } from './components/ui/input';
+import { Bot, MoreVertical } from 'lucide-react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 export type UserRole = 'buyer' | 'seller' | 'legal' | 'admin' | null;
 
@@ -24,30 +26,63 @@ export interface User {
   role: UserRole;
 }
 
-export default function App() {
+function AppContent() {
+  const { user, login, logout, isLoading } = useAuth();
   const [currentPage, setCurrentPage] = useState<'login' | 'dashboard' | 'listings' | 'detail' | 'projects' | 'materials' | 'suppliers' | 'workers' | 'schedule' | 'daily-reports' | 'work-reports' | 'reports' | 'settings' | 'documents'>('login');
-  const [user, setUser] = useState<User | null>(null);
   const [selectedLandId, setSelectedLandId] = useState<string | null>(null);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [initialAIPrompt, setInitialAIPrompt] = useState<string | null>(null);
+  const [quickPrompt, setQuickPrompt] = useState('');
   const [showNavigationMenu, setShowNavigationMenu] = useState(false);
+
+  // Restore current page from sessionStorage on mount
+  useEffect(() => {
+    const savedPage = sessionStorage.getItem('currentPage');
+    if (savedPage && user) {
+      setCurrentPage(savedPage as any);
+    } else if (user) {
+      setCurrentPage('dashboard');
+    } else {
+      setCurrentPage('login');
+    }
+  }, [user]);
+
+  // Save current page to sessionStorage whenever it changes
+  useEffect(() => {
+    if (currentPage !== 'login') {
+      sessionStorage.setItem('currentPage', currentPage);
+    }
+  }, [currentPage]);
 
   const handleLogin = (role: UserRole) => {
     // Mock login
-    setUser({
+    const mockUser = {
       id: '1',
-      name: role === 'buyer' ? 'John Buyer' : role === 'seller' ? 'Sarah Seller' : 'Legal Expert',
+      name: role === 'buyer' ? 'John Buyer' : role === 'seller' ? 'Sarah Seller' : role === 'legal' ? 'Legal Expert' : 'Admin User',
       email: `${role}@cm.com`,
       role
-    });
+    };
+    const mockToken = 'token-' + Date.now();
+    login(mockUser, mockToken);
     setCurrentPage('dashboard');
   };
 
   const handleLogout = () => {
-    setUser(null);
+    logout();
     setCurrentPage('login');
     setSelectedLandId(null);
     setShowNavigationMenu(false);
+    sessionStorage.removeItem('currentPage');
   };
+
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   const handleViewLand = (landId: string) => {
     setSelectedLandId(landId);
@@ -63,8 +98,60 @@ export default function App() {
     }
   };
 
+  const openAssistant = (prompt?: string) => {
+    setInitialAIPrompt(prompt ?? null);
+    setShowAIAssistant(true);
+  };
+
+  const handleSubmitQuickPrompt = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!quickPrompt.trim()) return openAssistant();
+    openAssistant(quickPrompt.trim());
+    setQuickPrompt('');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {user && currentPage !== 'login' && (
+        <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                <Bot className="w-4 h-4" />
+              </span>
+              AI Copilot
+              <span className="text-xs font-normal text-gray-500">Ask anything about land verification, docs, or construction.</span>
+            </div>
+            <form className="flex flex-col sm:flex-row gap-2" onSubmit={handleSubmitQuickPrompt}>
+              <div className="flex-1 flex gap-2">
+                <Input
+                  value={quickPrompt}
+                  onChange={(e) => setQuickPrompt(e.target.value)}
+                  placeholder="Ask a quick question..."
+                  className="bg-white"
+                />
+                <Button type="submit" variant="default">Ask</Button>
+                <Button type="button" variant="outline" onClick={() => openAssistant()}>Open Chat</Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {['Check document status', 'Explain verification steps', 'Construction feasibility', 'Show risks'].map((prompt) => (
+                  <Button
+                    key={prompt}
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => openAssistant(prompt)}
+                    className="text-xs"
+                  >
+                    {prompt}
+                  </Button>
+                ))}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {currentPage === 'login' && (
         <LoginPage onLogin={handleLogin} />
       )}
@@ -75,7 +162,7 @@ export default function App() {
             user={user}
             onLogout={handleLogout}
             onNavigate={setCurrentPage}
-            onToggleAI={() => setShowAIAssistant(!showAIAssistant)}
+            onToggleAI={() => openAssistant()}
           />
           <Button
             className="fixed bottom-6 right-6 rounded-full w-14 h-14 shadow-lg z-40"
@@ -92,7 +179,7 @@ export default function App() {
           onLogout={handleLogout}
           onViewLand={handleViewLand}
           onBack={handleBack}
-          onToggleAI={() => setShowAIAssistant(!showAIAssistant)}
+          onToggleAI={() => openAssistant()}
         />
       )}
 
@@ -102,7 +189,7 @@ export default function App() {
           landId={selectedLandId}
           onLogout={handleLogout}
           onBack={handleBack}
-          onToggleAI={() => setShowAIAssistant(!showAIAssistant)}
+          onToggleAI={() => openAssistant()}
         />
       )}
 
@@ -121,7 +208,7 @@ export default function App() {
           user={user}
           onLogout={handleLogout}
           onBack={() => setCurrentPage('dashboard')}
-          onToggleAI={() => setShowAIAssistant(!showAIAssistant)}
+          onToggleAI={() => openAssistant()}
         />
       )}
 
@@ -130,7 +217,7 @@ export default function App() {
           user={user}
           onLogout={handleLogout}
           onBack={() => setCurrentPage('dashboard')}
-          onToggleAI={() => setShowAIAssistant(!showAIAssistant)}
+          onToggleAI={() => openAssistant()}
         />
       )}
 
@@ -139,7 +226,7 @@ export default function App() {
           user={user}
           onLogout={handleLogout}
           onBack={() => setCurrentPage('dashboard')}
-          onToggleAI={() => setShowAIAssistant(!showAIAssistant)}
+          onToggleAI={() => openAssistant()}
         />
       )}
 
@@ -148,7 +235,7 @@ export default function App() {
           user={user}
           onLogout={handleLogout}
           onBack={() => setCurrentPage('dashboard')}
-          onToggleAI={() => setShowAIAssistant(!showAIAssistant)}
+          onToggleAI={() => openAssistant()}
         />
       )}
 
@@ -216,16 +303,28 @@ export default function App() {
       {showAIAssistant && user && (
         <AIAssistant
           user={user}
-          onClose={() => setShowAIAssistant(false)}
+          initialQuestion={initialAIPrompt ?? undefined}
+          onClose={() => {
+            setShowAIAssistant(false);
+            setInitialAIPrompt(null);
+          }}
         />
       )}
 
       {showNavigationMenu && user && (
         <NavigationMenu
-          onNavigate={setCurrentPage}
+          onNavigate={(page) => setCurrentPage(page as any)}
           onClose={() => setShowNavigationMenu(false)}
         />
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

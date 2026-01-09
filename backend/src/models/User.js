@@ -19,6 +19,12 @@ const userSchema = new mongoose.Schema({
     enum: ['buyer', 'seller', 'legal', 'admin'],
     default: 'buyer',
   },
+  // Admin who created/added this user (optional)
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

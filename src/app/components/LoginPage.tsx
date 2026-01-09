@@ -16,9 +16,18 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   const [password, setPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<'buyer' | 'seller' | 'legal' | 'admin'>('admin');
   const [isLoading, setIsLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate password length
+    if (password.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
+      return;
+    }
+    
+    setPasswordError('');
     setIsLoading(true);
 
     // Simulate login delay
@@ -94,12 +103,25 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder="Enter your password (min 8 characters)"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (e.target.value.length < 8) {
+                      setPasswordError('Password must be at least 8 characters');
+                    } else {
+                      setPasswordError('');
+                    }
+                  }}
                   required
-                  className="transition-all duration-200 focus:ring-2 focus:ring-orange-500"
+                  minLength={8}
+                  className={`transition-all duration-200 focus:ring-2 focus:ring-orange-500 ${
+                    passwordError ? 'border-red-500 focus:ring-red-500' : ''
+                  }`}
                 />
+                {passwordError && (
+                  <p className="text-sm text-red-500 mt-1">{passwordError}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>
@@ -133,7 +155,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Demo credentials: any email/password
+                Demo: any email & password (min 8 chars)
               </p>
             </div>
           </CardContent>
