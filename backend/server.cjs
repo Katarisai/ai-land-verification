@@ -47,7 +47,7 @@ app.use('/uploads', express.static(path.resolve(__dirname, 'uploads')));
 
 // Health
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', mongo: !!env.MONGO_URI, timestamp: new Date().toISOString() });
+  res.json({ status: 'OK', message: 'Server is running 🚀' });
 });
 
 // Serve frontend static files from dist folder
@@ -63,7 +63,7 @@ app.get('*', (req, res) => {
   }
 });
 
-const PORT = process.env.BACKEND_PORT || process.env.PORT || 7000;
+const PORT = process.env.RAILWAY_STATIC_URL ? process.env.PORT : (process.env.BACKEND_PORT || 3000);
 app.listen(PORT, () => {
   console.log(`✅ Backend API Server running on http://localhost:${PORT}`);
 });
