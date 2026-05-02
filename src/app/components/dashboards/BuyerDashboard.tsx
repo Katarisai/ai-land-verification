@@ -7,6 +7,7 @@ import {
   Sparkles,
   FileSearch,
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { DashboardShell, Tone } from './DashboardShell';
 
 interface BuyerDashboardProps {
@@ -14,11 +15,24 @@ interface BuyerDashboardProps {
 }
 
 export function BuyerDashboard({ onNavigate }: BuyerDashboardProps) {
+  const [savedCount, setSavedCount] = useState(0);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('savedLands');
+    if (saved) {
+      try {
+        setSavedCount(JSON.parse(saved).length);
+      } catch (err) {
+        setSavedCount(0);
+      }
+    }
+  }, []);
+
   const kpis = [
-    { label: 'Saved Listings', value: 12, icon: <Bookmark className="w-5 h-5" /> },
-    { label: 'Verified Docs', value: 28, icon: <FileCheck2 className="w-5 h-5" />, badge: { label: 'Secure', tone: 'success' as Tone } },
-    { label: 'Offers', value: 4, icon: <Handshake className="w-5 h-5" />, helper: '2 counter-offers pending' },
-    { label: 'Appointments', value: 3, icon: <CalendarClock className="w-5 h-5" />, badge: { label: 'Today', tone: 'info' as Tone } },
+    { label: 'Saved Listings', value: savedCount, icon: <Bookmark className="w-5 h-5" />, onClick: () => onNavigate?.('listings') },
+    { label: 'Verified Docs', value: 28, icon: <FileCheck2 className="w-5 h-5" />, badge: { label: 'Secure', tone: 'success' as Tone }, onClick: () => onNavigate?.('documents') },
+    { label: 'Offers', value: 4, icon: <Handshake className="w-5 h-5" />, helper: '2 counter-offers pending', onClick: () => onNavigate?.('inquiry-management') },
+    { label: 'Appointments', value: 3, icon: <CalendarClock className="w-5 h-5" />, badge: { label: 'Today', tone: 'info' as Tone }, onClick: () => onNavigate?.('schedule') },
   ];
 
   const quickActions = [

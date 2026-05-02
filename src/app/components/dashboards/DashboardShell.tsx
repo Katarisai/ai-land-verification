@@ -21,6 +21,7 @@ export interface KpiCardData {
   icon: ReactNode;
   badge?: { label: string; tone: Tone };
   helper?: string;
+  onClick?: () => void;
 }
 
 export interface QuickAction {
@@ -70,21 +71,28 @@ function ToneBadge({ tone, label }: { tone: Tone; label: string }) {
   );
 }
 
-function KpiCard({ label, value, icon, badge, helper }: KpiCardData) {
+function KpiCard({ label, value, icon, badge, helper, onClick }: KpiCardData) {
   return (
-    <Card className="shadow-sm border-0 bg-white/70 backdrop-blur">
-      <CardContent className="p-5 flex items-start justify-between">
-        <div>
-          <p className="text-sm text-gray-500 mb-1">{label}</p>
-          <div className="flex items-center gap-2">
-            <p className="text-3xl font-semibold text-gray-900">{value}</p>
-            {badge && <ToneBadge tone={badge.tone} label={badge.label} />}
+    <button
+      onClick={onClick}
+      className={`w-full text-left transition-all duration-200 ${
+        onClick ? 'hover:shadow-md hover:scale-105 cursor-pointer' : ''
+      }`}
+    >
+      <Card className="shadow-sm border-0 bg-white/70 backdrop-blur">
+        <CardContent className="p-5 flex items-start justify-between">
+          <div>
+            <p className="text-sm text-gray-500 mb-1">{label}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-3xl font-semibold text-gray-900">{value}</p>
+              {badge && <ToneBadge tone={badge.tone} label={badge.label} />}
+            </div>
+            {helper && <p className="text-xs text-gray-500 mt-1">{helper}</p>}
           </div>
-          {helper && <p className="text-xs text-gray-500 mt-1">{helper}</p>}
-        </div>
-        <div className="p-3 rounded-full bg-gray-100 text-gray-700">{icon}</div>
-      </CardContent>
-    </Card>
+          <div className="p-3 rounded-full bg-gray-100 text-gray-700">{icon}</div>
+        </CardContent>
+      </Card>
+    </button>
   );
 }
 

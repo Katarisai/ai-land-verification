@@ -1,15 +1,32 @@
-import { Shield, MapPin, FileCheck, Brain, Globe, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
+import { Shield, MapPin, FileCheck, Brain, Globe, TrendingUp, ArrowRight, Layers3, Users, MessageSquare, BadgeCheck, X, CheckCircle2, Landmark, Search, FileSearch, Scale } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { UserRole } from '../App';
 
 interface LandingPageProps {
-  onLogin: (role: UserRole) => void;
+  onSignIn: () => void;
+  onBrowseVerifiedLands: () => void;
+  onListYourProperty: () => void;
+  onExplorePlatform: () => void;
+  onLearnMore: () => void;
 }
 
-export function LandingPage({ onLogin }: LandingPageProps) {
+export function LandingPage({
+  onSignIn,
+  onBrowseVerifiedLands,
+  onListYourProperty,
+  onExplorePlatform,
+  onLearnMore,
+}: LandingPageProps) {
+  const [showLearnMore, setShowLearnMore] = useState(false);
+
+  const handleLearnMore = () => {
+    setShowLearnMore(true);
+    onLearnMore();
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50 text-slate-900">
       {/* Navigation */}
       <nav className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -20,11 +37,14 @@ export function LandingPage({ onLogin }: LandingPageProps) {
                 CM Platform
               </span>
             </div>
-            <div className="flex gap-3">
-              <Button variant="ghost" onClick={() => onLogin('buyer')}>
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" onClick={handleLearnMore}>
+                Learn More
+              </Button>
+              <Button variant="ghost" onClick={onSignIn}>
                 Sign In
               </Button>
-              <Button onClick={() => onLogin('seller')}>
+              <Button onClick={onExplorePlatform}>
                 Get Started
               </Button>
             </div>
@@ -45,11 +65,15 @@ export function LandingPage({ onLogin }: LandingPageProps) {
             and complete legal clarity. Trusted by buyers and sellers worldwide.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <Button size="lg" onClick={() => onLogin('buyer')} className="text-lg px-8">
+            <Button size="lg" onClick={onBrowseVerifiedLands} className="text-lg px-8">
               Browse Verified Lands
+              <ArrowRight className="w-4 h-4" />
             </Button>
-            <Button size="lg" variant="outline" onClick={() => onLogin('seller')} className="text-lg px-8">
+            <Button size="lg" variant="outline" onClick={onListYourProperty} className="text-lg px-8">
               List Your Property
+            </Button>
+            <Button size="lg" variant="secondary" onClick={handleLearnMore} className="text-lg px-8">
+              Explore Platform
             </Button>
           </div>
           
@@ -138,8 +162,191 @@ export function LandingPage({ onLogin }: LandingPageProps) {
               </p>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <Layers3 className="w-12 h-12 text-sky-600 mb-4" />
+              <h3 className="text-xl mb-2">Seller Tools</h3>
+              <p className="text-gray-600">
+                Profile management, analytics, lead tracking, and listing tools for serious sellers.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <MessageSquare className="w-12 h-12 text-emerald-600 mb-4" />
+              <h3 className="text-xl mb-2">Inquiry Management</h3>
+              <p className="text-gray-600">
+                Track buyer conversations, respond faster, and manage the sales pipeline in one place.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <Users className="w-12 h-12 text-indigo-600 mb-4" />
+              <h3 className="text-xl mb-2">Role-Based Access</h3>
+              <p className="text-gray-600">
+                Separate experiences for buyers, sellers, legal teams, and administrators.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </section>
+
+      {/* Platform Overview */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Card className="border-0 shadow-lg bg-slate-950 text-white overflow-hidden">
+          <CardContent className="p-8 md:p-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-sm mb-4">
+                <BadgeCheck className="w-4 h-4" />
+                Everything you need in one platform
+              </div>
+              <h2 className="text-3xl md:text-4xl mb-4">Land verification, sales, and due diligence in one flow.</h2>
+              <p className="text-slate-300 mb-6">
+                CM Platform combines AI-assisted document review, historical land analysis, seller tools,
+                and lead tracking so users can move from discovery to decision with fewer delays.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="secondary" onClick={onBrowseVerifiedLands}>Browse as Buyer</Button>
+                <Button variant="outline" onClick={onListYourProperty} className="border-white text-white hover:bg-white hover:text-slate-950">
+                  Sell Land
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                ['Verified records', 'Title, tax, and ownership checks'],
+                ['AI summaries', 'Risk, feasibility, and context'],
+                ['Seller CRM', 'Profiles, analytics, and leads'],
+                ['Messaging', 'Inquiry threads and follow-ups'],
+              ].map(([title, text]) => (
+                <div key={title} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="font-semibold mb-1">{title}</div>
+                  <div className="text-sm text-slate-300">{text}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {showLearnMore && (
+        <section id="about-land-verification" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <Card className="border-slate-200 shadow-xl bg-white">
+            <CardContent className="p-8 md:p-10">
+              <div className="flex items-start justify-between gap-4 mb-8">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm mb-4">
+                    <BadgeCheck className="w-4 h-4" />
+                    About Land Verification
+                  </div>
+                  <h2 className="text-3xl md:text-4xl mb-3">What the platform verifies before a transaction</h2>
+                  <p className="text-gray-600 max-w-3xl">
+                    CM Platform checks the documents, land history, and legal risks tied to a parcel so buyers and sellers can make decisions with clearer evidence and fewer surprises.
+                  </p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setShowLearnMore(false)} aria-label="Close about section">
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="border-slate-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Search className="w-6 h-6 text-blue-600" />
+                      <h3 className="text-xl">Core verification keypoints</h3>
+                    </div>
+                    <div className="space-y-4 text-sm text-gray-700">
+                      <div className="flex gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                        <div><span className="font-medium text-gray-900">Ownership check:</span> confirms the seller has the right to list the land.</div>
+                      </div>
+                      <div className="flex gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                        <div><span className="font-medium text-gray-900">Title and deed review:</span> reviews registration, title transfers, and document consistency.</div>
+                      </div>
+                      <div className="flex gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                        <div><span className="font-medium text-gray-900">Legal dispute screening:</span> flags claims, liens, court issues, or inheritance conflicts.</div>
+                      </div>
+                      <div className="flex gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                        <div><span className="font-medium text-gray-900">Land-use history:</span> compares satellite and registry records across time.</div>
+                      </div>
+                      <div className="flex gap-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                        <div><span className="font-medium text-gray-900">Zoning and buildability:</span> checks what the land can legally be used for.</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-slate-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Landmark className="w-6 h-6 text-green-600" />
+                      <h3 className="text-xl">What users get from it</h3>
+                    </div>
+                    <div className="space-y-4 text-sm text-gray-700">
+                      <div className="flex gap-3">
+                        <FileSearch className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                        <div><span className="font-medium text-gray-900">Verified documentation:</span> a clearer record of supporting files and missing pieces.</div>
+                      </div>
+                      <div className="flex gap-3">
+                        <Scale className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                        <div><span className="font-medium text-gray-900">Risk summary:</span> highlights legal, environmental, and access issues before a deal closes.</div>
+                      </div>
+                      <div className="flex gap-3">
+                        <TrendingUp className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                        <div><span className="font-medium text-gray-900">Construction insight:</span> shows feasibility and land suitability for future use.</div>
+                      </div>
+                      <div className="flex gap-3">
+                        <Globe className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                        <div><span className="font-medium text-gray-900">Global support:</span> adaptable to local rules across many regions and countries.</div>
+                      </div>
+                      <div className="flex gap-3">
+                        <FileCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                        <div><span className="font-medium text-gray-900">Human + AI workflow:</span> AI pre-checks the file set, then legal or survey teams confirm the final result.</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="border-slate-200 bg-slate-50">
+                  <CardContent className="p-5">
+                    <h4 className="font-semibold mb-2">For buyers</h4>
+                    <p className="text-sm text-gray-600">Know what is verified, what is risky, and what still needs review before making an offer.</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-slate-200 bg-slate-50">
+                  <CardContent className="p-5">
+                    <h4 className="font-semibold mb-2">For sellers</h4>
+                    <p className="text-sm text-gray-600">Show proof faster, build trust, and reduce back-and-forth with better documentation.</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-slate-200 bg-slate-50">
+                  <CardContent className="p-5">
+                    <h4 className="font-semibold mb-2">For legal teams</h4>
+                    <p className="text-sm text-gray-600">Review exceptions, confirm compliance, and close cases with a traceable workflow.</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Button onClick={onBrowseVerifiedLands}>Browse verified lands</Button>
+                <Button variant="outline" onClick={onListYourProperty}>List your property</Button>
+                <Button variant="secondary" onClick={onSignIn}>Sign in to continue</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {/* How It Works */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">

@@ -1,30 +1,24 @@
 import os
 from typing import List, Optional
+import requests
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
-import openai
 
 # Load environment variables from a local .env file if present
 load_dotenv()
 
-# Configuration
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "").strip() or None
+# Configuration - Google Gemini API
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
 SERVER_PORT = int(os.getenv("AI_SERVER_PORT", os.getenv("PORT", "5000")))
 
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY is required. Set it in backend/python_ai_assistant/.env or environment.")
+if not GOOGLE_API_KEY:
+    raise RuntimeError("GOOGLE_API_KEY is required. Set it in backend/python_ai_assistant/.env or environment.\n"
+                       "Get free API key at: https://makersuite.google.com/app/apikey")
 
-# Initialize OpenAI client
-client_kwargs = {"api_key": OPENAI_API_KEY}
-if OPENAI_BASE_URL:
-    client_kwargs["base_url"] = OPENAI_BASE_URL
-client = openai.OpenAI(**client_kwargs)
-
-app = FastAPI(title="AI Assistant Backend (Python)", version="1.0.0")
+app = FastAPI(title="AI Assistant Backend (Python) - Google Gemini", version="1.0.0")
 
 # CORS: allow local dev frontends
 app.add_middleware(
@@ -81,34 +75,97 @@ def health():
     return {
         "status": "OK",
         "port": SERVER_PORT,
-        "openai_base_url": OPENAI_BASE_URL or "https://api.openai.com",
+        "provider": "Google Gemini API",
+        "model": "gemini-pro",
     }
 
 
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(body: ChatRequest):
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        *[m.dict() for m in body.conversationHistory or []],
-        {"role": "user", "content": body.message.strip()},
+    # Format messages for Gemini API
+    system_prompt = SYSTEM_PROMPT
+    
+    # Convert history to Gemini format
+    contents = [
+        {"role": "user", "parts": [{"text": system_prompt}]},
     ]
+    
+    # Add conversation history
+    for msg in body.conversationHistory or []:
+        role = "model" if msg.role == "assistant" else "user"
+        contents.append({
+            "role": role,
+            "parts": [{"text": msg.content}]
+        })
+    
+    # Add current message
+    contents.append({
+        "role": "user",
+        "parts": [{"text": body.message.strip()}]
+    })
 
     try:
-        completion = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            temperature=0.7,
-            max_tokens=500,
-        )
-    except Exception as exc:  # pragma: no cover
-        raise HTTPException(status_code=500, detail=str(exc))
-
-    choice = completion.choices[0]
-    reply = choice.message.content if choice and choice.message else ""
-    if not reply:
-        raise HTTPException(status_code=500, detail="Empty response from model")
-
-    return ChatResponse(reply=reply, usage=completion.usage.model_dump() if completion.usage else {})
+        # Call Google Gemini API
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GOOGLE_API_KEY}"
+        payload = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": 0.7,
+                "maxOutputTokens": 500,
+                "topP": 1,
+                "topK": 40,
+            },
+            "safetySettings": [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                }
+            ],
+        }
+        
+        response = requests.post(url, json=payload, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Extract reply from Gemini response
+        if not data.get("candidates") or len(data["candidates"]) == 0:
+            raise HTTPException(status_code=500, detail="No candidates in Gemini response")
+        
+        reply = data["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
+        if not reply:
+            raise HTTPException(status_code=500, detail="Empty response from Gemini")
+        
+        # Extract usage info
+        usage = {}
+        if "usageMetadata" in data:
+            usage = {
+                "prompt_tokens": data["usageMetadata"].get("promptTokenCount", 0),
+                "completion_tokens": data["usageMetadata"].get("candidatesTokenCount", 0),
+                "total_tokens": data["usageMetadata"].get("totalTokenCount", 0),
+            }
+        
+        return ChatResponse(reply=reply, usage=usage)
+        
+    except requests.exceptions.RequestException as e:
+        if hasattr(e, 'response') and e.response is not None:
+            error_detail = f"Gemini API error ({e.response.status_code}): {str(e)}"
+        else:
+            error_detail = f"Gemini API request failed: {str(e)}"
+        raise HTTPException(status_code=500, detail=error_detail)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Error: {str(exc)}")
 
 
 # To run locally: `uvicorn main:app --host 0.0.0.0 --port 5000 --reload`

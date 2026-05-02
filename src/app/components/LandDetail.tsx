@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield, LogOut, Bot, MapPin, Search, Filter, ChevronLeft, Star, CheckCircle, AlertCircle, Edit, Upload, X } from 'lucide-react';
+import { Shield, LogOut, Bot, MapPin, Search, Filter, ChevronLeft, Star, CheckCircle, AlertCircle, Edit, Upload, X, MessageCircle, Phone } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -15,6 +15,7 @@ interface LandDetailProps {
   onLogout: () => void;
   onBack: () => void;
   onToggleAI: () => void;
+  onContactAgent?: (landId: string, landTitle: string) => void;
 }
 
 const mockLands = [
@@ -28,7 +29,7 @@ const mockLands = [
     status: 'verified',
     aiScore: 95,
     riskLevel: 'low',
-    image: 'farmland aerial',
+    image: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad576?w=800&h=600&fit=crop',
     features: ['Water Access', 'Road Frontage', 'Fertile Soil'],
     listedDate: '2 days ago',
     description: 'Prime agricultural land with excellent soil quality and irrigation access. Perfect for farming operations with high yield potential.'
@@ -43,7 +44,7 @@ const mockLands = [
     status: 'in-review',
     aiScore: 88,
     riskLevel: 'low',
-    image: 'residential land',
+    image: 'https://images.unsplash.com/photo-1570129477492-45e003ed2cb5?w=800&h=600&fit=crop',
     features: ['City Utilities', 'Zoned Residential', 'Near Schools'],
     listedDate: '1 week ago',
     description: 'Beautiful residential plot in a growing neighborhood with all utilities available. Ideal for building your dream home.'
@@ -58,14 +59,14 @@ const mockLands = [
     status: 'verified',
     aiScore: 92,
     riskLevel: 'medium',
-    image: 'commercial property',
+    image: 'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=800&h=600&fit=crop',
     features: ['Highway Access', 'High Traffic', 'Development Ready'],
     listedDate: '3 days ago',
     description: 'Strategic commercial location with excellent visibility and traffic flow. Perfect for retail or office development.'
   }
 ];
 
-export function LandDetail({ user, landId, onLogout, onBack, onToggleAI }: LandDetailProps) {
+export function LandDetail({ user, landId, onLogout, onBack, onToggleAI, onContactAgent }: LandDetailProps) {
   const land = mockLands.find(l => l.id === landId);
   const [isEditing, setIsEditing] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
@@ -190,6 +191,15 @@ export function LandDetail({ user, landId, onLogout, onBack, onToggleAI }: LandD
 
             {/* Action Buttons */}
             <div className="flex gap-3">
+              {user.role === 'buyer' && (
+                <Button 
+                  onClick={() => onContactAgent?.(landId, land.title)} 
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Contact Agent
+                </Button>
+              )}
               {user.role !== 'buyer' && (
                 <>
                   <Button onClick={handleEditListing} className="flex-1">

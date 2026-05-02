@@ -1,6 +1,6 @@
 # AI Chatbot Server
 
-OpenAI-powered chatbot backend for CM Platform.
+Google Gemini-powered chatbot backend for CM Platform.
 
 ## Setup
 
@@ -9,11 +9,17 @@ OpenAI-powered chatbot backend for CM Platform.
 npm install
 ```
 
-2. Create `.env` file and add your OpenAI API key:
+2. Create `.env` file and add your Google Gemini API key:
 ```
-OPENAI_API_KEY=your_actual_api_key_here
+GOOGLE_API_KEY=your_google_gemini_api_key_here
 PORT=5000
 ```
+
+**How to get a free Google Gemini API key:**
+- Visit: https://makersuite.google.com/app/apikey
+- Sign in with your Google account
+- Click "Create API key"
+- Copy the key and add it to `.env`
 
 3. Start the server:
 ```bash
@@ -53,3 +59,11 @@ Response:
   }
 }
 ```
+
+## Why Google Gemini?
+
+- ✅ **Free API** - Generous free tier for development
+- ✅ **No Credit Card** - Get started immediately
+- ✅ **Fast** - Quick response times
+- ✅ **Reliable** - Production-ready quality
+- ✅ **Open Source** - No vendor lock-in

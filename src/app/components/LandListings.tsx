@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Shield, LogOut, Bot, MapPin, Search, Filter, ChevronLeft, Star, CheckCircle, AlertCircle, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Shield, LogOut, Bot, MapPin, Search, Filter, ChevronLeft, Star, CheckCircle, AlertCircle, Plus, ShoppingCart, Trash2, Phone, MessageCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Input } from './ui/input';
@@ -17,6 +17,14 @@ interface LandListingsProps {
   onViewLand: (landId: string) => void;
   onBack: () => void;
   onToggleAI: () => void;
+  onContactAgent?: (landId: string, landTitle: string) => void;
+}
+
+interface CartItem {
+  id: string;
+  title: string;
+  price: number;
+  addedAt: string;
 }
 
 const mockLands = [
@@ -136,8 +144,13 @@ const mockLands = [
   }
 ];
 
-export function LandListings({ user, onLogout, onViewLand, onBack, onToggleAI }: LandListingsProps) {
+export function LandListings({ user, onLogout, onViewLand, onBack, onToggleAI, onContactAgent }: LandListingsProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [lands, setLands] = useState<any[]>([]);
+  const [savedLands, setSavedLands] = useState<string[]>([]);
+  const [showCartDialog, setShowCartDialog] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     location: '',
@@ -147,38 +160,169 @@ export function LandListings({ user, onLogout, onViewLand, onBack, onToggleAI }:
     features: '',
     image: ''
   });
+  const [submitting, setSubmitting] = useState(false);
+
+  const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) ? import.meta.env.VITE_API_BASE.replace(/\/$/, '') : 'http://localhost:7000';
+
+  // Load lands from backend on mount
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/lands?limit=50`);
+        if (!res.ok) throw new Error('Failed to fetch lands');
+        const data = await res.json();
+        if (!mounted) return;
+        // Map backend land objects to UI shape
+        const mapped = (data.lands || data).map((l: any) => ({
+          id: l.landId || l._id || l.id,
+          title: l.property?.description || l.title || `${l.property?.type || ''} - ${l.surveyNumber || ''}`,
+          location: `${l.location?.city || ''}${l.location?.state ? ', ' + l.location.state : ''}`,
+          price: l.property?.price || 0,
+          area: l.property?.area || 0,
+          type: l.property?.type || 'Unknown',
+          status: l.verification?.overallStatus ? l.verification.overallStatus.toLowerCase() : 'in-review',
+          aiScore: Math.round((l.aiProcessing?.riskAssessment?.riskScore || 0.5) * 100),
+          riskLevel: (l.aiProcessing?.riskAssessment?.riskLevel || 'medium').toLowerCase(),
+          images: (l.imageGallery || []).map((g: any) => g.imageUrl).filter(Boolean),
+          features: l.property?.description ? [l.property.description] : (l.features || []),
+          listedDate: l.createdDate ? new Date(l.createdDate).toLocaleDateString() : 'Unknown',
+          aiSummary: l.aiProcessing?.aiSummary || ''
+        }));
+        setLands(mapped.length ? mapped : mockLands);
+      } catch (err) {
+        console.warn('Could not load lands from API, using mock data', err);
+        setLands(mockLands);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // Load saved lands from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('savedLands');
+    if (saved) {
+      try {
+        setSavedLands(JSON.parse(saved));
+      } catch (err) {
+        console.warn('Failed to load saved lands from localStorage', err);
+      }
+    }
+  }, []);
+
+  // Save saved lands to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('savedLands', JSON.stringify(savedLands));
+  }, [savedLands]);
+
+  const handleAddToCart = (land: any) => {
+    const existingItem = cart.find(item => item.id === land.id);
+    if (!existingItem) {
+      setCart([...cart, {
+        id: land.id,
+        title: land.title,
+        price: land.price,
+        addedAt: new Date().toLocaleTimeString()
+      }]);
+      alert(`Added "${land.title}" to cart!`);
+    } else {
+      alert('This property is already in your cart!');
+    }
+  };
+
+  const handleSaveLand = (landId: string) => {
+    if (savedLands.includes(landId)) {
+      setSavedLands(savedLands.filter(id => id !== landId));
+    } else {
+      setSavedLands([...savedLands, landId]);
+    }
+  };
+
+  const isSaved = (landId: string) => savedLands.includes(landId);
+
+  const handleRemoveFromCart = (landId: string) => {
+    setCart(cart.filter(item => item.id !== landId));
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = () => {
-    // Add new listing to mock data (in a real app, this would be an API call)
-    const newListing = {
-      id: (mockLands.length + 1).toString(),
-      title: formData.title,
-      location: formData.location,
-      price: parseInt(formData.price),
-      area: parseFloat(formData.area),
-      type: formData.type,
-      status: 'in-review',
-      aiScore: 0,
-      riskLevel: 'low',
-      images: formData.image ? [formData.image] : ['https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&h=600&fit=crop'],
-      features: formData.features.split(',').map(f => f.trim()),
-      listedDate: 'Just now'
-    };
-    mockLands.unshift(newListing);
-    setIsDialogOpen(false);
-    setFormData({
-      title: '',
-      location: '',
-      price: '',
-      area: '',
-      type: 'Agricultural',
-      features: '',
-      image: ''
-    });
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      // Build payload compatible with backend Land model
+      const payload: any = {
+        surveyNumber: `SURV-${Date.now()}`,
+        owner: {
+          name: user.name,
+          email: user.email,
+          phone: '',
+          governmentId: '',
+          address: ''
+        },
+        location: {
+          city: formData.location,
+          state: ''
+        },
+        property: {
+          type: formData.type,
+          area: parseFloat(formData.area) || 0,
+          areaUnit: 'Acres',
+          price: parseFloat(formData.price) || 0,
+          currency: 'USD',
+          description: ''
+        },
+        legal: {
+          ownershipStatus: 'Individual Owner',
+          legalStatus: 'Pending Registration',
+          noPendency: false,
+          noEncumbrance: false
+        },
+        documents: [],
+        imageGallery: (formData.image ? formData.image.split(',').map((url) => ({ imageUrl: url.trim() })) : [])
+      };
+
+      const res = await fetch(`${API_BASE}/api/lands/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Upload failed (${res.status})`);
+      }
+
+      const data = await res.json();
+
+      // Add returned land to top of listings (use id = landId for frontend)
+      const added = {
+        id: data.land.landId || (lands.length + 1).toString(),
+        title: formData.title || 'New Listing',
+        location: formData.location,
+        price: data.land.property?.price || parseFloat(formData.price) || 0,
+        area: data.land.property?.area || parseFloat(formData.area) || 0,
+        type: data.land.property?.type || formData.type,
+        status: data.land.verification?.overallStatus ? data.land.verification.overallStatus.toLowerCase() : 'in-review',
+        aiScore: 0,
+        riskLevel: data.land.aiProcessing?.riskAssessment?.riskLevel?.toLowerCase() || 'low',
+        images: (data.land.imageGallery || []).map((img: any) => img.imageUrl).concat(formData.image ? formData.image.split(',') : []),
+        features: formData.features ? formData.features.split(',').map(f => f.trim()) : [],
+        listedDate: 'Just now',
+        aiSummary: data.land.aiProcessing?.aiSummary || ''
+      };
+
+      setLands(prev => [added, ...prev]);
+      setIsDialogOpen(false);
+      setFormData({ title: '', location: '', price: '', area: '', type: 'Agricultural', features: '', image: '' });
+      alert('Listing uploaded successfully' + (added.aiSummary ? `\nAI Summary: ${added.aiSummary}` : ''));
+    } catch (err: any) {
+      console.error('Upload error', err);
+      alert('Failed to upload listing: ' + (err.message || err));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -202,6 +346,69 @@ export function LandListings({ user, onLogout, onViewLand, onBack, onToggleAI }:
                 <Bot className="w-4 h-4 mr-2" />
                 AI Assistant
               </Button>
+              {user.role === 'buyer' && (
+                <Dialog open={showCartDialog} onOpenChange={setShowCartDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="relative">
+                      <ShoppingCart className="w-4 h-4 mr-2" />
+                      Cart {cart.length > 0 && <span className="ml-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{cart.length}</span>}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                      <DialogTitle>Shopping Cart ({cart.length} items)</DialogTitle>
+                    </DialogHeader>
+                    {cart.length === 0 ? (
+                      <div className="text-center py-8">
+                        <ShoppingCart className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+                        <p className="text-gray-500">Your cart is empty</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {cart.map((item) => (
+                          <div key={item.id} className="flex justify-between items-start border-b pb-4">
+                            <div className="flex-1">
+                              <h3 className="font-semibold">{item.title}</h3>
+                              <p className="text-sm text-gray-500">${item.price.toLocaleString()}</p>
+                              <p className="text-xs text-gray-400">Added: {item.addedAt}</p>
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleRemoveFromCart(item.id)}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </div>
+                        ))}
+                        <div className="pt-4 border-t-2 space-y-3">
+                          <div className="flex justify-between items-center text-lg font-semibold">
+                            <span>Total Value:</span>
+                            <span className="text-blue-600">${cart.reduce((total, item) => total + item.price, 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                              onClick={() => {
+                                if (cart.length > 0 && onContactAgent) {
+                                  onContactAgent(cart[0].id, cart[0].title);
+                                  setShowCartDialog(false);
+                                }
+                              }}
+                            >
+                              <Phone className="w-4 h-4 mr-2" />
+                              Proceed to Contact Agent
+                            </Button>
+                            <Button variant="outline" className="flex-1">
+                              Generate Report
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
+              )}
               <div className="text-sm">
                 <div>{user.name}</div>
                 <div className="text-gray-500 text-xs capitalize">{user.role}</div>
@@ -341,8 +548,25 @@ export function LandListings({ user, onLogout, onViewLand, onBack, onToggleAI }:
             )}
           </div>
           <p className="text-gray-600">
-            {mockLands.length} verified properties with AI-powered insights
+            {lands.length} verified properties with AI-powered insights
           </p>
+          {/* Dev auto-login banner */}
+          {typeof window !== 'undefined' && (() => {
+            try {
+              const saved = localStorage.getItem('user');
+              if (saved) {
+                const u = JSON.parse(saved);
+                if (u?.email === 'dev@example.com') {
+                  return (
+                    <div className="mt-3 p-2 text-sm bg-yellow-50 border border-yellow-200 text-yellow-700 rounded">
+                      Dev auto-login active as <strong>dev@example.com</strong>. To disable: <code>localStorage.setItem('disableDevAutoLogin','true')</code>
+                    </div>
+                  );
+                }
+              }
+            } catch (e) {}
+            return null;
+          })()}
         </div>
 
         {/* Filters */}
@@ -387,7 +611,7 @@ export function LandListings({ user, onLogout, onViewLand, onBack, onToggleAI }:
 
         {/* Listings Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockLands.map((land) => (
+          {lands.map((land) => (
             <Card key={land.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
               <div className="relative h-48 bg-gray-200 overflow-hidden">
                 <ImageWithFallback
@@ -424,8 +648,15 @@ export function LandListings({ user, onLogout, onViewLand, onBack, onToggleAI }:
                       {land.location}
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" className="mt-0">
-                    <Star className="w-4 h-4" />
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="mt-0"
+                    onClick={() => handleSaveLand(land.id)}
+                  >
+                    <Star 
+                      className={`w-4 h-4 ${isSaved(land.id) ? 'fill-yellow-400 text-yellow-400' : ''}`}
+                    />
                   </Button>
                 </div>
 

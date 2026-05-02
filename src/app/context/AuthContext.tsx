@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
 
   // Restore user session from localStorage on component mount
   useEffect(() => {
@@ -42,6 +43,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('loginTime');
       }
     }
+    // In development, auto-login is opt-in so localhost opens on the pre-login flow by default.
+    // Enable it manually with localStorage.setItem('enableDevAutoLogin','true') if needed.
+    try {
+      // @ts-ignore - import.meta exists in Vite env
+      const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
+      const enableDevAutoLogin = localStorage.getItem('enableDevAutoLogin') === 'true';
+      if (!savedUser && !savedToken && isDev && enableDevAutoLogin) {
+        const mockUser: User = {
+          id: 'dev-user-1',
+          name: 'Dev User',
+          email: 'dev@example.com',
+          role: 'seller'
+        };
+        const mockToken = 'dev-mock-token-' + Date.now();
+        setUser(mockUser);
+        setAuthToken(mockToken);
+        localStorage.setItem('user', JSON.stringify(mockUser));
+        localStorage.setItem('authToken', mockToken);
+        localStorage.setItem('loginTime', new Date().toISOString());
+        console.log('Dev auto-login applied for local development');
+      }
+    } catch (err) {
+      // ignore if import.meta not available in some environments
+    }
     setIsLoading(false);
   }, []);
 
@@ -54,6 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('Session expired due to inactivity');
       logout();
     }, SESSION_TIMEOUT);
+
+    setTimeoutId(id);
 
     return () => {
       if (id) clearTimeout(id);
@@ -76,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('authToken');
     localStorage.removeItem('loginTime');
     sessionStorage.removeItem('currentPage');
+    sessionStorage.removeItem('selectedLandId');
     if (timeoutId) clearTimeout(timeoutId);
     console.log('User logged out');
   };

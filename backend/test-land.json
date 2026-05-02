@@ -1,0 +1,30 @@
+{
+  "surveyNumber": "SURV-TEST-001",
+  "owner": {
+    "name": "Test Owner",
+    "email": "owner@example.com",
+    "phone": "9999999999",
+    "governmentId": "ID123456",
+    "address": "123 Test Lane"
+  },
+  "location": {
+    "city": "Testville",
+    "state": "TestState",
+    "country": "India",
+    "gps": { "latitude": 17.3850, "longitude": 78.4867 }
+  },
+  "property": {
+    "type": "Residential",
+    "area": 2.5,
+    "areaUnit": "Acres",
+    "price": 5000000,
+    "currency": "INR",
+    "description": "Test property for automated upload"
+  },
+  "legal": {
+    "ownershipStatus": "Individual Owner",
+    "legalStatus": "Registered",
+    "noPendency": true,
+    "noEncumbrance": true
+  }
+}

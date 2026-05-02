@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import OpenAI from "openai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -23,9 +24,17 @@ console.log(`🔑 API Key status: ${OPENAI_API_KEY ? '✅ Loaded' : '❌ Missing
 if (!OPENAI_API_KEY || OPENAI_API_KEY === "YOUR_OPENAI_API_KEY" || OPENAI_API_KEY.length < 20) {
   console.error("❌ FATAL: OPENAI_API_KEY is missing, invalid, or not configured in .env");
   console.error(`   Current value: ${OPENAI_API_KEY ? `"${OPENAI_API_KEY.substring(0, 10)}..."` : "undefined"}`);
-  console.error("   Fix: Add OPENAI_API_KEY=sk-proj-... to server/.env");
+  console.error("   Fix: Add OPENAI_API_KEY=sk-... to server/.env");
+  console.error("   Get API key at: https://platform.openai.com/api-keys");
   process.exit(1);
 }
+
+// ✅ Initialize OpenAI client
+const client = new OpenAI({
+  apiKey: OPENAI_API_KEY,
+});
+
+const OPENAI_MODEL = process.env.OPENAI_MODEL?.trim() || 'gpt-4o';
 
 const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 5000;
 console.log(`🔌 Target port: ${DEFAULT_PORT}`);
@@ -57,7 +66,7 @@ app.get("/api/health", (req, res) => {
 // ✅ Main chat endpoint
 app.post("/api/chat", async (req, res) => {
   try {
-    const { message, conversationHistory } = req.body;
+    const { message, conversationHistory, landContext } = req.body;
 
     // Validate input
     if (!message || typeof message !== "string" || message.trim().length === 0) {
@@ -68,102 +77,102 @@ app.post("/api/chat", async (req, res) => {
     console.log(`📨 Received message: "${message.substring(0, 50)}..."`);
     console.log(`📋 History length: ${conversationHistory?.length || 0} messages`);
 
-    const systemPrompt = `You are an AI Land Survey Assistant for CM Platform.
-You help users understand:
-- Land ownership and verification
-- Survey numbers and boundaries
-- Property documentation requirements
-- Construction feasibility assessment
-- Legal requirements and compliance
-- Risk analysis and recommendations
-- Historical property analysis
+    const systemPrompt = `You are an AI Land Verification Assistant for CM Platform.
+  You answer questions about:
+  - Land ownership and verification
+  - Survey numbers and boundaries
+  - Property documentation requirements
+  - Construction feasibility assessment
+  - Legal requirements and compliance
+  - Risk analysis and recommendations
+  - Historical property analysis
 
-Provide clear, professional responses in simple language.
-Focus on land verification and construction management topics.`;
+  Provide clear, professional responses in simple language.
+  Focus on land verification and construction management topics.
+  If landContext is provided, answer strictly using that context and say when details are not available.`;
 
-    // Build message array
+    // Build message array for OpenAI format
     const messages = [
-      { role: "system", content: systemPrompt },
-      ...(Array.isArray(conversationHistory) ? conversationHistory : []),
-      { role: "user", content: message.trim() }
+      {
+        role: "system",
+        content: systemPrompt
+      }
     ];
+    
+    // Add conversation history if present
+    if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      conversationHistory.forEach(msg => {
+        messages.push({
+          role: msg.role === "assistant" ? "assistant" : "user",
+          content: msg.content
+        });
+      });
+    }
 
-    console.log(`🔄 Calling OpenAI API with ${messages.length} messages...`);
-
-    // ✅ Call OpenAI API
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 500,
-        top_p: 1,
-        frequency_penalty: 0,
-        presence_penalty: 0,
-      }),
+    if (typeof landContext === 'string' && landContext.trim()) {
+      messages.push({
+        role: "system",
+        content: `LAND CONTEXT:\n${landContext.trim()}`
+      });
+    }
+    
+    // Add current message
+    messages.push({
+      role: "user",
+      content: message.trim()
     });
 
-    const data = await response.json();
+    console.log(`🔄 Calling OpenAI API with ${messages.length} messages...`);
+    console.log(`📋 Last user message: "${message.substring(0, 80)}..."`);
 
-    // ✅ Check response status BEFORE processing
-    if (!response.ok) {
-      console.error("❌ OpenAI API returned error:");
-      console.error(`   Status: ${response.status} ${response.statusText}`);
-      console.error(`   Error: ${JSON.stringify(data, null, 2)}`);
+    // ✅ Call OpenAI Chat API
+    const response = await client.chat.completions.create({
+      model: OPENAI_MODEL,
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 800,
+      top_p: 0.95
+    });
 
-      // Handle specific OpenAI errors
-      if (data.error?.type === "invalid_request_error") {
-        return res.status(400).json({
-          error: `Invalid request: ${data.error.message}`,
-        });
-      }
-      if (data.error?.type === "authentication_error") {
-        console.error("   💡 Hint: Check your OPENAI_API_KEY in server/.env");
-        return res.status(401).json({
-          error: "Authentication failed. Invalid API key.",
-        });
-      }
-      if (data.error?.type === "rate_limit_error") {
-        return res.status(429).json({
-          error: "Rate limited by OpenAI. Please try again in a moment.",
-        });
-      }
-      if (data.error?.type === "server_error") {
-        return res.status(503).json({
-          error: "OpenAI service temporarily unavailable. Try again soon.",
-        });
-      }
-
-      throw new Error(`OpenAI API error (${response.status}): ${data.error?.message || "Unknown"}`);
-    }
-
-    // ✅ Validate response structure
-    if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
-      console.error("❌ Invalid OpenAI response structure:", data);
-      throw new Error("OpenAI returned invalid response structure");
-    }
-
-    const reply = data.choices[0]?.message?.content;
+    const reply = response.choices[0]?.message?.content;
+    
     if (!reply) {
-      console.error("❌ No message content in response:", data.choices[0]);
-      throw new Error("OpenAI returned empty response");
+      console.error("❌ No message content in response:", JSON.stringify(response.choices[0], null, 2));
+      return res.status(500).json({
+        error: "OpenAI returned empty response"
+      });
     }
 
     console.log(`✅ OpenAI response received: "${reply.substring(0, 50)}..."`);
-    console.log(`   Tokens used - Input: ${data.usage?.prompt_tokens || 0}, Output: ${data.usage?.completion_tokens || 0}`);
+    const tokenUsage = response.usage;
+    if (tokenUsage) {
+      console.log(`   Tokens used - Input: ${tokenUsage.prompt_tokens || 0}, Output: ${tokenUsage.completion_tokens || 0}`);
+    }
 
     res.json({
       reply: reply,
-      usage: data.usage || {},
+      usage: tokenUsage ? {
+        prompt_tokens: tokenUsage.prompt_tokens,
+        completion_tokens: tokenUsage.completion_tokens,
+        total_tokens: tokenUsage.total_tokens,
+      } : {},
     });
   } catch (error) {
     console.error("❌ Server error:", error.message);
     console.error(`   Stack: ${error.stack}`);
+
+    // Handle OpenAI specific errors
+    if (error.status === 401) {
+      return res.status(401).json({
+        error: "Authentication failed. Check your OPENAI_API_KEY.",
+        message: error.message,
+      });
+    }
+    if (error.status === 429) {
+      return res.status(429).json({
+        error: "Rate limited by OpenAI. Please try again in a moment.",
+      });
+    }
 
     res.status(500).json({
       error: "Failed to get AI response. Please check server logs.",
@@ -190,11 +199,12 @@ function startServer(port, attempt = 0) {
   const server = app.listen(port, "0.0.0.0", () => {
     console.log("\n✅ ========================================");
     console.log(`✅ AI Chatbot Server READY on port ${port}`);
-    console.log("✅ Listening at: http://localhost:" + port);
+    console.log("✅ Listening at: http://0.0.0.0:" + port);
+    console.log("✅ Access at: http://127.0.0.1:" + port);
     console.log("✅ ========================================\n");
     console.log("📡 Available endpoints:");
-    console.log(`   GET  http://localhost:${port}/api/health`);
-    console.log(`   POST http://localhost:${port}/api/chat`);
+    console.log(`   GET  http://127.0.0.1:${port}/api/health`);
+    console.log(`   POST http://127.0.0.1:${port}/api/chat`);
     console.log("\n");
   }).on("error", (err) => {
     console.error(`❌ Server error on port ${port}:`, err.code, err.message);

@@ -15,10 +15,10 @@ interface SellerDashboardProps {
 
 export function SellerDashboard({ onNavigate }: SellerDashboardProps) {
   const kpis = [
-    { label: 'Active Listings', value: 5, icon: <MapPin className="w-5 h-5" />, badge: { label: 'Live', tone: 'success' as Tone } },
-    { label: 'Verified Docs', value: 15, icon: <FileText className="w-5 h-5" />, badge: { label: '+3 this week', tone: 'info' as Tone } },
-    { label: 'AI Reports', value: 12, icon: <Sparkles className="w-5 h-5" />, helper: '3 pending updates' },
-    { label: 'Inquiries', value: 18, icon: <MessageCircle className="w-5 h-5" />, badge: { label: '4 new', tone: 'warning' as Tone } },
+    { label: 'Active Listings', value: 5, icon: <MapPin className="w-5 h-5" />, badge: { label: 'Live', tone: 'success' as Tone }, onClick: () => onNavigate?.('listings') },
+    { label: 'Verified Docs', value: 15, icon: <FileText className="w-5 h-5" />, badge: { label: '+3 this week', tone: 'info' as Tone }, onClick: () => onNavigate?.('documents') },
+    { label: 'AI Reports', value: 12, icon: <Sparkles className="w-5 h-5" />, helper: '3 pending updates', onClick: () => onNavigate?.('reports') },
+    { label: 'Inquiries', value: 18, icon: <MessageCircle className="w-5 h-5" />, badge: { label: '4 new', tone: 'warning' as Tone }, onClick: () => onNavigate?.('inquiry-management') },
   ];
 
   const quickActions = [
