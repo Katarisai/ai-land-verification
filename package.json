@@ -4,9 +4,10 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "node ./node_modules/vite/bin/vite.js build",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "build:full": "npm run build && cd backend && npm install",
-    "dev": "node ./node_modules/vite/bin/vite.js",
     "start": "node backend/server.cjs"
   },
   "dependencies": {
