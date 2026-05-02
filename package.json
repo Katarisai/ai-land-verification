@@ -11,7 +11,7 @@
     "start": "node backend/server.cjs"
   },
   "engines": {
-    "node": "24.x"
+    "node": "20.x"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
